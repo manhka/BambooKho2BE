@@ -7,6 +7,8 @@ require("dotenv").config();
 const authRoutes = require("./routes/authRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const brandRoutes = require("./routes/brandRoutes");
+const productRoutes = require("./routes/productRoutes");
+const locationRoutes = require("./routes/locationRoutes");
 const app = express();
 
 app.use(cors());
@@ -15,7 +17,8 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/brands", brandRoutes);
-
+app.use("/api/products", productRoutes);
+app.use("/api/locations", locationRoutes);
 // Test database connection
 sequelize
   .authenticate()

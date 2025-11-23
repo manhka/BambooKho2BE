@@ -1,41 +1,84 @@
 const Brand = require("../models/Brand");
+const { Op } = require("sequelize");
 
-// Create new brand
 exports.create = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { Name, Description } = req.body;
 
-    const exist = await Brand.findOne({ where: { Name: name } });
-    if (exist) return res.status(400).json({ message: "Brand exists" });
+    const trimmedName = Name ? Name.trim() : Name;
+
+    if (!trimmedName) {
+      return res
+        .status(400)
+        .json({ message: "Tên thương hiệu không được để trống." });
+    }
+
+    const exist = await Brand.findOne({ where: { Name: trimmedName } });
+    if (exist) {
+      return res.status(400).json({
+        message: "Tên thương hiệu đã tồn tại. Vui lòng chọn tên khác.",
+      });
+    }
 
     const brand = await Brand.create({
-      Name: name,
-      Description: description,
+      Name: trimmedName,
+      Description: Description,
       Status: "active",
     });
 
     res.json({ message: "Created", brand });
   } catch (err) {
-    console.error(err);
+    console.error("Lỗi tạo Brand:", err);
+
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({
+        message: "Tên thương hiệu đã tồn tại. Vui lòng chọn tên khác.",
+      });
+    }
+
+    if (err.name === "SequelizeValidationError") {
+      return res.status(400).json({
+        message: err.errors[0].message || "Lỗi dữ liệu không hợp lệ.",
+      });
+    }
+
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// List all brands (optional: filter by status)
 exports.list = async (req, res) => {
   try {
-    const status = req.query.status; // ?status=active or archived
-    const where = status ? { Status: status } : {};
+    const { page = 1, limit = 10, search = "", status } = req.query;
 
-    const brands = await Brand.findAll({ where });
-    res.json(brands);
+    const where = {};
+
+    if (search) {
+      where.Name = { [Op.like]: `%${search}%` };
+    }
+
+    if (status) where.Status = status;
+
+    const offset = (page - 1) * limit;
+
+    const { rows, count } = await Brand.findAndCountAll({
+      where,
+      offset,
+      limit: parseInt(limit),
+      order: [["BrandID", "DESC"]],
+    });
+
+    res.json({
+      items: rows,
+      totalItems: count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: parseInt(page),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// Get one brand by ID
 exports.get = async (req, res) => {
   try {
     const brand = await Brand.findByPk(req.params.id);
@@ -48,26 +91,57 @@ exports.get = async (req, res) => {
   }
 };
 
-// Update brand
 exports.update = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { Name, Description } = req.body;
+
+    const trimmedName = Name ? Name.trim() : Name;
+
+    if (!trimmedName) {
+      return res
+        .status(400)
+        .json({ message: "Tên thương hiệu không được để trống." });
+    }
 
     const brand = await Brand.findByPk(req.params.id);
-    if (!brand) return res.status(404).json({ message: "Not found" });
+    if (!brand) {
+      return res.status(404).json({ message: "Không tìm thấy Brand" });
+    }
 
-    brand.Name = name;
-    brand.Description = description;
+    if (trimmedName !== brand.Name) {
+      const exist = await Brand.findOne({ where: { Name: trimmedName } });
+      if (exist && exist.BrandID !== brand.BrandID) {
+        return res.status(400).json({
+          message: "Tên thương hiệu đã tồn tại. Vui lòng chọn tên khác.",
+        });
+      }
+    }
+
+    brand.Name = trimmedName;
+    brand.Description = Description;
+
     await brand.save();
 
     res.json({ message: "Updated", brand });
   } catch (err) {
-    console.error(err);
+    console.error("Lỗi cập nhật Brand:", err);
+
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({
+        message: "Tên thương hiệu đã tồn tại. Vui lòng chọn tên khác.",
+      });
+    }
+
+    if (err.name === "SequelizeValidationError") {
+      return res.status(400).json({
+        message: err.errors[0].message || "Lỗi dữ liệu không hợp lệ.",
+      });
+    }
+
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// Archive (soft delete)
 exports.archive = async (req, res) => {
   try {
     const brand = await Brand.findByPk(req.params.id);
@@ -83,7 +157,6 @@ exports.archive = async (req, res) => {
   }
 };
 
-// Restore archived brand
 exports.restore = async (req, res) => {
   try {
     const brand = await Brand.findByPk(req.params.id);

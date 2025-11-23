@@ -1,41 +1,84 @@
 const Category = require("../models/Category");
+const { Op } = require("sequelize");
 
-// Create new category
 exports.create = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { Name, Description } = req.body;
 
-    const exist = await Category.findOne({ where: { Name: name } });
-    if (exist) return res.status(400).json({ message: "Category exists" });
+    const trimmedName = Name ? Name.trim() : Name;
+
+    if (!trimmedName) {
+      return res
+        .status(400)
+        .json({ message: "Tên danh mục không được để trống." });
+    }
+
+    const exist = await Category.findOne({ where: { Name: trimmedName } });
+    if (exist) {
+      return res
+        .status(400)
+        .json({ message: "Tên danh mục đã tồn tại. Vui lòng chọn tên khác." });
+    }
 
     const category = await Category.create({
-      Name: name,
-      Description: description,
+      Name: trimmedName,
+      Description: Description,
       Status: "active",
     });
 
     res.json({ message: "Created", category });
   } catch (err) {
-    console.error(err);
+    console.error("Lỗi tạo Category:", err);
+
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({
+        message: "Tên danh mục đã tồn tại. Vui lòng chọn tên khác.",
+      });
+    }
+
+    if (err.name === "SequelizeValidationError") {
+      return res.status(400).json({
+        message: err.errors[0].message || "Lỗi dữ liệu không hợp lệ.",
+      });
+    }
+
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// List all categories (optional: filter by status)
 exports.list = async (req, res) => {
   try {
-    const status = req.query.status; // ?status=active or archived
-    const where = status ? { Status: status } : {};
+    const { page = 1, limit = 10, search = "", status } = req.query;
 
-    const categories = await Category.findAll({ where });
-    res.json(categories);
+    const where = {};
+
+    if (search) {
+      where.Name = { [Op.like]: `%${search}%` };
+    }
+
+    if (status) where.Status = status;
+
+    const offset = (page - 1) * limit;
+
+    const { rows, count } = await Category.findAndCountAll({
+      where,
+      offset,
+      limit: parseInt(limit),
+      order: [["CategoryID", "DESC"]],
+    });
+
+    res.json({
+      items: rows,
+      totalItems: count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: parseInt(page),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// Get one category by ID
 exports.get = async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id);
@@ -48,26 +91,57 @@ exports.get = async (req, res) => {
   }
 };
 
-// Update category
 exports.update = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { Name, Description } = req.body;
+
+    const trimmedName = Name ? Name.trim() : Name;
+
+    if (!trimmedName) {
+      return res
+        .status(400)
+        .json({ message: "Tên danh mục không được để trống." });
+    }
 
     const category = await Category.findByPk(req.params.id);
-    if (!category) return res.status(404).json({ message: "Not found" });
+    if (!category) {
+      return res.status(404).json({ message: "Không tìm thấy Category" });
+    }
 
-    category.Name = name;
-    category.Description = description;
+    if (trimmedName !== category.Name) {
+      const exist = await Category.findOne({ where: { Name: trimmedName } });
+      if (exist && exist.CategoryID !== category.CategoryID) {
+        return res.status(400).json({
+          message: "Tên danh mục đã tồn tại. Vui lòng chọn tên khác.",
+        });
+      }
+    }
+
+    category.Name = trimmedName;
+    category.Description = Description;
+
     await category.save();
 
     res.json({ message: "Updated", category });
   } catch (err) {
-    console.error(err);
+    console.error("Lỗi cập nhật Category:", err);
+
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({
+        message: "Tên danh mục đã tồn tại. Vui lòng chọn tên khác.",
+      });
+    }
+
+    if (err.name === "SequelizeValidationError") {
+      return res.status(400).json({
+        message: err.errors[0].message || "Lỗi dữ liệu không hợp lệ.",
+      });
+    }
+
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// Archive (soft delete)
 exports.archive = async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id);
@@ -83,7 +157,6 @@ exports.archive = async (req, res) => {
   }
 };
 
-// Restore archived category
 exports.restore = async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id);
