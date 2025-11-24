@@ -12,6 +12,7 @@ const locationRoutes = require("./routes/locationRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 const supplierRoutes = require("./routes/supplierRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
+const dashboardRouter = require("./routes/dashboardRouter");
 const app = express();
 
 app.use(cors());
@@ -25,6 +26,7 @@ app.use("/api/locations", locationRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/dashboard", dashboardRouter);
 // Test database connection
 sequelize
   .authenticate()
