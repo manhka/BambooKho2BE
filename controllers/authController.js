@@ -93,3 +93,29 @@ exports.login = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+exports.getAllUsers = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+
+    const offset = (page - 1) * limit;
+
+    const { rows, count } = await User.findAndCountAll({
+      where: search ? { Username: { [Op.like]: `%${search}%` } } : {},
+      offset,
+      limit,
+      order: [["UserID", "DESC"]],
+    });
+
+    res.json({
+      items: rows,
+      totalItems: count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

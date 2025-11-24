@@ -3,8 +3,8 @@ const router = express.Router();
 const customerController = require("../controllers/customersController");
 const auth = require("../middlewares/authMiddleware");
 
-router.post("/", auth(["admin"]), customerController.create);
-router.put("/:id", auth(["admin"]), customerController.update);
+router.post("/", auth(), customerController.create);
+router.put("/:id", auth(), customerController.update);
 
 router.get("/", auth(), customerController.list);
 router.get("/:id", auth(), customerController.get);

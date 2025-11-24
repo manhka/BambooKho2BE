@@ -15,10 +15,10 @@ router.get("/", auth(), locationController.getAll);
 // 2. ROUTES DÀNH CHO CREATE/UPDATE/DELETE (POST/PUT/DELETE)
 // ==========================================================
 
-router.post("/", auth(["admin", "staff"]), locationController.create);
+router.post("/", auth(), locationController.create);
 
-router.put("/:id", auth(["admin", "staff"]), locationController.update);
+router.put("/:id", auth(), locationController.update);
 
-router.delete("/:id", auth(["admin"]), locationController.remove);
+router.delete("/:id", auth(), locationController.remove);
 router.post("/restore/:id", locationController.restore);
 module.exports = router;

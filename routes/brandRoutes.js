@@ -4,10 +4,10 @@ const brandController = require("../controllers/brandController");
 const auth = require("../middlewares/authMiddleware");
 
 // Admin only
-router.post("/", auth(["admin"]), brandController.create);
-router.put("/:id", auth(["admin"]), brandController.update);
-router.delete("/:id", auth(["admin"]), brandController.archive);
-router.post("/:id/restore", auth(["admin"]), brandController.restore);
+router.post("/", auth(), brandController.create);
+router.put("/:id", auth(), brandController.update);
+router.delete("/:id", auth(), brandController.archive);
+router.post("/:id/restore", auth(), brandController.restore);
 
 // All logged in users
 router.get("/", auth(), brandController.list);

@@ -4,10 +4,10 @@ const categoryController = require("../controllers/categoryController");
 const auth = require("../middlewares/authMiddleware");
 
 // Admin only
-router.post("/", auth(["admin"]), categoryController.create);
-router.put("/:id", auth(["admin"]), categoryController.update);
-router.delete("/:id", auth(["admin"]), categoryController.archive);
-router.post("/:id/restore", auth(["admin"]), categoryController.restore);
+router.post("/", auth(), categoryController.create);
+router.put("/:id", auth(), categoryController.update);
+router.delete("/:id", auth(), categoryController.archive);
+router.post("/:id/restore", auth(), categoryController.restore);
 
 // All logged in users
 router.get("/", auth(), categoryController.list);
