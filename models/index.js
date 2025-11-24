@@ -15,6 +15,11 @@ const Inventory = require("./Inventory");
 const Category = require("./Category"); // Cần import Category & Brand (nếu chúng cũng dùng cấu trúc này)
 const Brand = require("./Brand"); // Cần import Category & Brand
 const Location = require("./Location");
+const InventoryVoucher = require("./InventoryVoucher");
+const User = require("./User");
+const Customer = require("./Customer");
+const Supplier = require("./Supplier");
+const VoucherDetail = require("./VoucherDetail");
 /* ============================================================
   ASSOCIATIONS
   ============================================================ */
@@ -63,6 +68,56 @@ Product.belongsTo(Brand, {
 });
 Brand.hasMany(Product, { foreignKey: "BrandID", sourceKey: "BrandID" });
 
+// 1. Voucher ↔ User (Người tạo chứng từ)
+InventoryVoucher.belongsTo(User, {
+  foreignKey: "UserID",
+  as: "Creator",
+});
+User.hasMany(InventoryVoucher, {
+  foreignKey: "UserID",
+});
+
+// 2. Voucher ↔ Customer (Đối tác cho Xuất/Trả hàng)
+InventoryVoucher.belongsTo(Customer, {
+  foreignKey: "PartnerID",
+  targetKey: "CustomerID",
+  as: "CustomerPartner",
+});
+
+// 3. Voucher ↔ Supplier (Đối tác cho Nhập kho)
+InventoryVoucher.belongsTo(Supplier, {
+  foreignKey: "PartnerID",
+  targetKey: "SupplierID",
+  as: "SupplierPartner",
+});
+
+// 4. Voucher ↔ VoucherDetail (Chi tiết chứng từ)
+InventoryVoucher.hasMany(VoucherDetail, {
+  foreignKey: "VoucherID",
+  as: "VoucherDetail",
+});
+VoucherDetail.belongsTo(InventoryVoucher, {
+  foreignKey: "VoucherID",
+});
+// 5. VoucherDetail thuộc về (BELONGS TO) Product thông qua Barcode
+VoucherDetail.belongsTo(Product, {
+  foreignKey: "Barcode", // Khóa ngoại trong VoucherDetail
+  targetKey: "Barcode", // Khóa chính/target trong Product
+});
+
+// 6. Product có nhiều (HAS MANY) VoucherDetail (Tùy chọn, nhưng tốt cho truy vấn ngược)
+Product.hasMany(VoucherDetail, {
+  foreignKey: "Barcode",
+  sourceKey: "Barcode",
+});
+VoucherDetail.belongsTo(ProductBatch, {
+  foreignKey: "BatchID", // Khóa ngoại trong VoucherDetail
+  targetKey: "BatchID", // Khóa chính/target trong ProductBatch
+});
+VoucherDetail.belongsTo(ProductSerial, {
+  foreignKey: "SerialID", // Khóa ngoại trong VoucherDetail
+  targetKey: "SerialID", // Khóa chính/target trong ProductSerial
+});
 /* ============================================================
   EXPORT
   ============================================================ */
@@ -76,4 +131,9 @@ module.exports = {
   Category,
   Brand,
   Location,
+  InventoryVoucher,
+  User,
+  Customer,
+  Supplier,
+  VoucherDetail,
 };

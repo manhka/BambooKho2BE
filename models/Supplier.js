@@ -19,11 +19,15 @@ const Supplier = sequelize.define(
       type: DataTypes.STRING(20),
       allowNull: true,
     },
-
     Email: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: { isEmail: true },
+      validate: {
+        isEmail: true,
+      },
+      set(value) {
+        this.setDataValue("Email", value === "" ? null : value);
+      },
     },
 
     Address: {

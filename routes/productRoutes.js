@@ -12,7 +12,7 @@ router.post("/:id/restore", auth(["admin"]), productController.restore);
 
 // All logged in users
 router.get("/", auth(), productController.getAll);
-router.get("/:id", auth(), productController.viewDetail);
+router.get("/view-detail/:id", auth(), productController.viewDetail);
 router.post(
   "/import",
   auth(["admin"]),
@@ -27,5 +27,21 @@ router.post(
   auth(["admin"]),
   productController.confirmImport
 );
+
+// 1. GET /api/products/search
+// Tìm kiếm sản phẩm theo tên, Barcode hoặc Serial. Trả về danh sách gợi ý cho FE.
+router.get(
+  "/search",
+  auth(), // Bảo vệ route
+  productController.searchProducts
+);
+
+// 2. GET /api/products/:barcode/batches
+// Lấy danh sách các Lô (Batch) còn tồn của một sản phẩm cụ thể.
+router.get("/:barcode/batches", auth(), productController.getBatches);
+
+// 3. GET /api/products/:barcode/serials
+// Lấy danh sách các Serial còn tồn (status='in_stock') của một sản phẩm cụ thể.
+router.get("/:barcode/serials", auth(), productController.getSerials);
 
 module.exports = router;

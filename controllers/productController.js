@@ -2,7 +2,14 @@
 
 // 1. IMPORT CÁC MODULE VÀ MODEL CẦN THIẾT (LUÔN ĐẶT Ở ĐẦU)
 const { Op } = require("sequelize");
-const { Product, Category, Brand, Location } = require("../models"); // Import models từ index.js
+const {
+  Product,
+  Category,
+  Brand,
+  Location,
+  ProductBatch,
+  ProductSerial,
+} = require("../models"); // Import models từ index.js
 const XLSX = require("xlsx");
 const { unlink } = require("fs/promises"); // Import để xóa file tạm sau khi import (nên có)
 
@@ -205,7 +212,7 @@ exports.getAll = async (req, res) => {
 exports.viewDetail = async (req, res) => {
   try {
     const { id } = req.params;
-
+    console.log("iddiidid:", id);
     // Thêm include để trả về chi tiết Category và Brand khi xem chi tiết
     const product = await Product.findByPk(id, {
       include: [
@@ -614,5 +621,126 @@ exports.confirmImport = async (req, res) => {
       errorMessage = `Lỗi Validation: ${err.errors[0].message}`;
     }
     res.status(500).json({ message: errorMessage });
+  }
+};
+
+// 1. Controller cho tìm kiếm chung sản phẩm theo Barcode, Tên, hoặc Serial
+// controllers/productController.js
+
+exports.searchProducts = async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    console.log("Tìm kiếm Barcode/Tên sản phẩm với từ khóa:", search);
+
+    let whereCondition = {};
+    let limitValue = 10; // Giới hạn kết quả mặc định
+
+    // 1. Định nghĩa điều kiện WHERE
+    if (search && search.trim().length > 0) {
+      // Nếu có từ khóa tìm kiếm, áp dụng điều kiện LIKE
+      const trimmedSearch = search.trim();
+      whereCondition = {
+        [Op.or]: [
+          // Tìm kiếm theo Tên (chứa từ khóa)
+          { Name: { [Op.like]: `%${trimmedSearch}%` } },
+          // Tìm kiếm theo Barcode (chứa từ khóa)
+          { Barcode: { [Op.like]: `%${trimmedSearch}%` } },
+        ],
+      };
+    } else {
+      limitValue = 50;
+    }
+
+    // 2. Thực hiện truy vấn Product
+    const productList = await Product.findAll({
+      where: whereCondition,
+      attributes: [
+        "Barcode",
+        "Name",
+        "IsSerial",
+        "SalePrice",
+        "StockQuantity",
+        "CostPrice",
+        "AverageCost",
+      ],
+      limit: limitValue,
+      order: [["Name", "ASC"]], // Sắp xếp theo tên cho dễ nhìn
+    });
+
+    // 3. Trả về kết quả
+    // Lưu ý: Nếu whereCondition là {}, nó sẽ trả về productList (theo limit)
+    return res.status(200).json({
+      success: true,
+      data: productList,
+    });
+  } catch (error) {
+    console.error("Lỗi tìm kiếm sản phẩm:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Lỗi máy chủ khi tìm kiếm sản phẩm." });
+  }
+};
+
+// 2. Controller lấy tồn kho Lô
+exports.getBatches = async (req, res) => {
+  try {
+    const { barcode } = req.params;
+
+    if (!barcode) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu Barcode." });
+    }
+
+    const batches = await ProductBatch.findAll({
+      where: {
+        Barcode: barcode,
+        Quantity: { [Op.gt]: 0 }, // Chỉ lấy lô có số lượng > 0
+      },
+      // Order theo ngày hết hạn hoặc ngày nhập (ví dụ: FEFO)
+      order: [["createdAt", "ASC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: batches,
+    });
+  } catch (error) {
+    console.error(`Lỗi lấy lô cho ${req.params.barcode}:`, error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Lỗi máy chủ khi lấy tồn kho lô." });
+  }
+};
+
+// 3. Controller lấy tồn kho Serial
+exports.getSerials = async (req, res) => {
+  try {
+    const { barcode } = req.params;
+
+    if (!barcode) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu Barcode." });
+    }
+
+    const serials = await ProductSerial.findAll({
+      where: {
+        Barcode: barcode,
+        Status: "in_stock", // Chỉ lấy các serial còn trong kho
+      },
+      order: [["WarrantyEnd", "ASC"]], // Ví dụ: ưu tiên xuất Serial có hạn bảo hành gần hết
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: serials,
+    });
+  } catch (error) {
+    console.error(`Lỗi lấy serial cho ${req.params.barcode}:`, error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Lỗi máy chủ khi lấy tồn kho serial." });
   }
 };

@@ -24,9 +24,13 @@ const Customer = sequelize.define(
     Email: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: { isEmail: true },
+      validate: {
+        isEmail: true,
+      },
+      set(value) {
+        this.setDataValue("Email", value === "" ? null : value);
+      },
     },
-
     Address: {
       type: DataTypes.STRING,
       allowNull: true,
